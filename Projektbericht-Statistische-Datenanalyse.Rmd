@@ -1,0 +1,617 @@
+---
+title: "Projektbericht"
+author: "Heehwan Soul, 885941"
+date: "2024-02-02"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+```
+
+
+
+## 1. Maximum-Likelihood-Schätzung
+Eine Stichprobe aus der Poisson Verteilung mit $\lambda$ = 4.
+```{r, echo=FALSE, message=FALSE}
+# Parameters für das Sample mit Poisson-Verteilung
+n = 100
+lambda = 4
+
+set.seed(885941) # damit sind die Ergebnisse immer wieder reproduzierbar
+
+sample_poisson <- rpois(n=n, lambda = lambda)
+sample_poisson
+```
+### Die Herleitung der Schätzung in den wesentlichen Schritten
+Seien $X_{1},...,X_{n}$ unabhängige Wiederholungen einer Poisson-verteilten Größe $Po(\lambda)$ mit zu schätzendem Wert $\lambda$. Die Realisationen seien $x_{1},...,x_{n}$. Damit erhält man die Likelihoodfunktion 
+$$L(\lambda)=f(x_{1},...,x_{n} \mid \lambda)$$
+nach der Definition. Man kann diese Funktion so umformen, weil die Zufallsvariablen $X_{1},...,X_{n}$ $unabhängig$ sind.
+$$=f(x_{1} \mid \lambda) \cdot\cdot\cdot f(x_{n} \mid \lambda)$$
+Man erhält dann die Log-Likelihood-Funktion
+$$\ln(L(\lambda))=\ln(f(x_{1} \mid \lambda) \cdot\cdot\cdot f(x_{n} \mid \lambda)). $$
+Man kann diesen Term durch die Produktregel von Logarithmus so umformen
+$$=\ln(f(x_{1} \mid \lambda)) + \cdot\cdot\cdot + \ln(f(x_{n} \mid \lambda)) = \sum_{i = 1}^{n} \ln(f(x_{i} \mid \lambda).$$
+Die funktion $f(x_{i} \mid \lambda) = e^{-\lambda}\frac{\lambda^{x_{i}}}{x_{i}!}$ nach der Defition von der Poisson Verteilung und kann man das oben ersetzen.
+$$=\sum_{i = 1}^{n} \ln(e^{-\lambda}\frac{\lambda^{x_{i}}}{x_{i}!})$$
+Man kann diesen Term mit Eigenschaften von Logarithmus weiter einfachen.
+$$=\sum_{i = 1}^{n} (\ln(e^{-\lambda}) + ln(\lambda^{x_{i}}) - ln(x_{i}!)) = \sum_{i = 1}^{n} (-\lambda + x_{i}\ln(\lambda) - \ln(x_{i}!))$$
+Ableiten und Nullsetzen liefert
+$$\frac{\partial \ln(L(\lambda))}{\partial \lambda}=\sum_{i = 1}^{n} (-1 + \frac{x_{i}}{\lambda})=0$$
+und damit
+$$-n + \frac{\sum_{i = 1}^{n} x_{i}}{\lambda} = 0$$
+und das heißt
+$$ \lambda = \frac{\sum_{i = 1}^{n} x_{i}}{n} = \overline{x}.$$
+Wenn $\lambda$ das arithmetische Mittel von alle Realisationen ist, der Wert von der Log-Likelihood-Funktion ist maximal und daraus folgt, dass der Wert von der Likelihood-Funktion auch maximal ist. Der Maximum Likelihood-Schätzer ist also in diesem Fall für jede Realisationsfolge identisch mit dem arithmetischen Mittle.
+
+Reference: Fahrmeir, Statistik der Weg zur Datenanalyse
+
+### Wenden Sie die hergeleitete Schätzung auf Ihre Daten an
+
+```{r, echo=FALSE, message=FALSE}
+hergeleitete_schaetzung <- mean(sample_poisson)
+hergeleitete_schaetzung
+```
+Der Maximum Likelihood-Schätzer ist 3.938333, obwohl das Sample aus der Poisson-Verteilung für $\lambda = 4$ kommt. Der Schätzer kann anders als 4 sein, sollte der Schätzer jedoch nähe von 4 sein.
+
+```{r, echo=FALSE, message=FALSE}
+#options(scipen = 999, digits = 2) # sig digits
+
+# Sample und Poisson-Verteilung mit lambda = 4
+df_sample_poisson <- data.frame(sample_poisson)
+events <- 0:20
+density_lambda_4 <- dpois(x = events, lambda = 4)
+#df_poisson_lamda_4 <- data.frame(events, density)
+p <- ggplot() +
+  # sample_poisson
+  geom_bar(data=df_sample_poisson, aes(x= sample_poisson, y=after_stat(prop))) +
+  # Poisson Distribution mit lambda = 4
+  geom_point(colour = "red", aes(x=events, y = density_lambda_4)) +
+  labs(title = "Poisson-Verteilung(Lambda=4) mit Scatterplot und Sample mit Bar chart",
+       x = "k",
+       y = "Density")
+
+
+# Sample und Poisson-Verteilung mit lambda = 4.3
+density_lambda_4.3 <- dpois(x = events, lambda = 4.3)
+
+q <- ggplot() +
+  # sample_poisson
+  geom_bar(data=df_sample_poisson, aes(x= sample_poisson, y=after_stat(prop))) +
+  # Poisson Distribution mit lambda = 4.3
+  geom_point(colour = "red", aes(x=events, y = density_lambda_4.3)) +
+  labs(title = "Poisson-Verteilung(Lambda=4.3) mit Scatterplot und Sample mit Bar chart",
+       x = "k",
+       y = "Density")
+p
+q
+```
+
+Man kann sehen, dass die Verteilung des Samples sehr änlich wie die Poisson-Verteilung für $\lambda=4$ und $\lambda=4.3$ ist. Nach der Maximum-Likelihood-Schätzung sollte die Verteilung der Poisson-Verteilung für $\lambda=4.3$ näher von die Verteilung des Samples als die Verteilung der Poisson-Verteilung für $\lambda=4$ sein, kann man jedoch durch die Grafiken nicht ganz klar das sehen.
+
+
+### Stellen Sie die sowohl die Likelihood- als auch die Log-Likelihood-Funktion (inklusive der eingezeichneten Schätzung) passend grafisch dar.
+
+```{r, echo=FALSE, message=FALSE}
+# Likelihood-Funktion
+likelihood_f <- function(lambda){
+  r <- exp(-n*lambda)*(1/prod(factorial(sample_poisson)))*(lambda^sum(sample_poisson))
+  return(r)
+}
+curve(likelihood_f, 3, 5)
+points(hergeleitete_schaetzung, likelihood_f(hergeleitete_schaetzung), col="red", pch=19)
+
+## Log-Likelihood Funktion
+log_likelihood_f <- function(lambda){
+  r <- -n*lambda + log(lambda)*sum(sample_poisson) - log(prod(factorial(sample_poisson)))
+  return(r)
+}
+
+curve(log_likelihood_f, 3, 5)
+points(hergeleitete_schaetzung, log_likelihood_f(hergeleitete_schaetzung), col="red", pch=19)
+```
+Auf der zweiten Grafik kann man einfach sehen, dass der rote Punkt das Maximum der Log-Likelihood-Funktion ist. Auf der ersten Grafik ist jedoch der rote Punkt kein Maximum der Likelihood-Funktion. Die numerische Auswertungen dieser Likelihood-Funktion können viel unterschiedlich als die exakte Auswetungen sein, da diese Likelihood-Funktion ist eine Funktion mit Exponenten. Deswegen ist es in diesem Fall viel besser Log-Likelihood-Funktion zu nutzen.
+
+
+## 2. Estimation Theory
+In this section we are going to estimate a mean value of a distribution using a estimator. Suppose $X_{1},...,X_{n}$ is independent and identically distributed random variables(i.i.d.) with a Bernoulli distribution($Bernoulli(p)$). We are going to use the mean($\overline{X}$) as our estimator. Is it a good estimator? We can see if it is good or not through the concepts of bias, MSE and consistency.
+
+### Bias, MSE, Consistency
+1. Bias: The bias of a estimator is $$Bias(\hat{\theta}) = E(\hat{\theta})-\theta$$ by Definition. Here $\hat{\theta}$ is a estimator and $\theta$ is parameter, which is estimated. In our case $\hat{\theta}$ is the mean($\overline{X}$) and $\theta$ is the mean of $Bernoulli(p)$, and we know that the mean of $Bernoulli(p)$ is $p$. So we can rewrite it as follows: $$=E(\overline{X})-p.$$ We can simplify this expression using the properties of the mean. $$=E(\frac{X_{1} + \cdot\cdot\cdot + X_{n}}{n})-p$$
+$$=\frac{1}{n}E(X_{1} + \cdot\cdot\cdot + X_{n})-p$$
+$$=\frac{1}{n}E(\sum_{i = 1}^{n} X_{i})-p$$
+$$=\frac{1}{n}\sum_{i = 1}^{n} E(X_{i})-p$$
+$$=\frac{1}{n}\sum_{i = 1}^{n}p-p$$
+$$=\frac{1}{n}np-p=0$$
+This estimator is unbiased.
+
+2. MSE: The MSE of a estimator is $$MSE(\hat{\theta})=E((\hat{\theta}-\theta)^{2})$$ by Definition and it is as same as $$=Var(\hat{\theta})+Bias(\hat{\theta})^{2}.$$
+We know that the bias of this estimator is 0, so we can rewrite it as follows: $$=Var(\frac{X_{1} + \cdot\cdot\cdot + X_{n}}{n})+0^{2}.$$
+We can simplify this expression like above using the properties of variance and the fact that the variance of $Bernoulli(p)$ is $p(1-p)$.
+$$=\frac{1}{n^{2}}Var(X_{1} + \cdot\cdot\cdot + X_{n})$$
+$$=\frac{1}{n^{2}}Var(\sum_{i = 1}^{n} X_{i})$$
+$$=\frac{1}{n^{2}}\sum_{i = 1}^{n} Var(X_{i})$$
+$$\frac{1}{n^{2}}p(1-p)$$
+
+3. Consistenty: The MSE of this estimator tends to zero as $n \to \infty$, therefore this estimator is consistent in mean square.
+
+With the information above, we can say that this estimator is reasonable. Now let's do a simulation to check if this estimator works.
+
+```{r, echo=TRUE, message=FALSE}
+set.seed(885941) # damit sind die Ergebnisse immer wieder reproduzierbar
+
+sample_bernoulli <- rbinom(10000, 1, 0.5) # we can use rbinom(), because Bernoulli distribution is a special case of binomial distribution with size=1.
+
+mean(sample_bernoulli)
+
+```
+The mean of our sample is 0.5056 and it is quite close to the mean of the Bernoulli distribution with p = 0.5. We can see that this estimator works well.
+
+### Sample mean converges to the true mean
+Let's do simulations to see if sample mean converges to the true mean when n is getting bigger.
+
+```{r, echo=FALSE, message=FALSE}
+set.seed(885941) # damit sind die Ergebnisse immer wieder reproduzierbar
+p <- 0.5
+
+results_n <- list()
+results_sample_mean <- list()
+
+error <- 1
+n <- 0
+while(error > 0.001)
+{
+  n <- n + 40
+  sample_bernoulli_2 <- rbinom(n, 1, p)
+  sample_mean <- mean(sample_bernoulli_2)
+  results_n <- append(results_n, n)
+  results_sample_mean <- append(results_sample_mean, sample_mean)
+  error <- abs(p-sample_mean)
+  
+}
+
+plot(unlist(results_n), unlist(results_sample_mean), xlab="n", ylab="sample mean") + abline(h=p, col="blue")
+```
+
+The p value is 0.5 and the blue line on the graph is the p value which is also the mean of this Bernoulli distribution. We can find that the sample mean tends to close to 0.5 when n gets bigger. To see that trend clearly, let's use more data.
+
+```{r, echo=FALSE, message=FALSE}
+set.seed(885941) # damit sind die Ergebnisse immer wieder reproduzierbar
+p <- 0.5
+
+results_n <- list()
+results_sample_mean <- list()
+
+n <- 0
+while(n < 20000)
+{
+  n <- n + 20
+  sample_bernoulli_2 <- rbinom(n, 1, p)
+  sample_mean <- mean(sample_bernoulli_2)
+  results_n <- append(results_n, n)
+  results_sample_mean <- append(results_sample_mean, sample_mean)
+}
+
+plot(unlist(results_n), unlist(results_sample_mean), xlab="n", ylab="sample mean") + abline(h=p, col="blue")
+```
+We can see that the sample mean converges to the true mean(0.5) when n gets bigger.
+
+### The sample mean is approxiamtely normally distributed
+
+We are going to do a similar simulation like above($Bernoulli(0.5)$), but this time with a fixed $n=10000$, which is big enough, and compare the distribution of sample means with a normal distribution with mean $p=0.5$ and standard deviation $\frac{\sqrt{p(1-p)}}{\sqrt{n}}$. These mean and standard deviation are decided by the central limit theorem. The central limit Theorem says that for samples of size 30 or more, the sample mean is approximately normally distributed, with mean $\mu_{\overline{X}}=\mu$ and standard deviation $\rho_{\overline{X}}=\frac{\rho}{\sqrt{n}}$, where n is the sample size, and the larger the sample size, the better the approximation.
+
+Reference: LibreTexts Statistics, https://stats.libretexts.org/
+
+```{r, echo=FALSE, message=FALSE}
+#set.seed(Sys.time()) # unset the seed to do this simulation 
+p <- 0.5
+n <- 10000
+
+results_sample_mean_2 <- list()
+
+# store sample means in a list
+for (k in 1:4000)
+{
+  sample_bernoulli_3 <- rbinom(n, 1, p)
+  sample_mean_2 <- mean(sample_bernoulli_3)
+  results_sample_mean_2 <- append(results_sample_mean_2, sample_mean_2)
+}
+
+df_bernoulli_means_normal <- do.call(rbind.data.frame, results_sample_mean_2) # convert a list to data frame
+colnames(df_bernoulli_means_normal) <- c("Mean")
+
+p <- ggplot() +
+  # density plot of sample means
+  geom_histogram(data=df_bernoulli_means_normal, aes(x=Mean, y=after_stat(density))) +
+  # the plot of normal distribution
+  stat_function(fun = dnorm, colour = "red", args = list(mean = p, sd = sqrt(p*(1-p))/sqrt(n))) +
+  labs(title = "Sample means und normal distribution",
+       x = "Sample mean",
+       y = "Density")
+  
+p
+```
+
+We can see that these two distributions are very similar.
+
+## 3. Hypothesis Testing
+We are going to do some hypothesis Testings(significance level of __0.05__) using the data set called `SwissLabor`. This data set has 7 variables, `participation`, `income`, `age`, `education`, `youngkids`, `oldkids`, `foreign` and all observations are female. This survey is executed in 1981. We are going to only use the data of 90% of all observations. Here is the description of the variables:
+
+* participation: Factor. Did the individual participate in the labor force?
+* income: Logarithm of nonlabor income.
+* age: Age in decades (years divided by 10).
+* education: Years of formal education.
+* youngkids: Number of young children (under 7 years of age).
+* oldkids: Number of older children (over 7 years of age).
+* foreign: Factor. Is the individual a foreigner (i.e., not Swiss)?
+
+
+```{r, echo=FALSE, message=FALSE}
+library(AER)
+data("SwissLabor")
+
+# 90%-sample
+set.seed(885941)
+n <- nrow(SwissLabor)    ## Stichprobenumfang
+
+s <- sample(1:n)      ## zufaellige Permutation aller Personen im Datensatz
+n_90percent <- ceiling(0.9*n)  ## 90% der Daten
+
+SwissLabor.90percent <- SwissLabor[s,][1:n_90percent,]
+attach(SwissLabor.90percent)
+str(SwissLabor.90percent)
+```
+### Test between `income` and `foreign`
+```{r, echo=FALSE, message=FALSE}
+# 1. t.test(between income and foreign)
+t.test(income ~ foreign, alternative = "greater")
+```
+The null and alternative hypothesis for this test are as follows:
+
+* $H_{0}$: The mean(income) in non-foreign group is less than or as same as the mean(income) in foreign group.
+
+* $H_{1}$: The mean(income) in non-foreign group is greater than the mean(income) in foreign group.
+
+The p-value = 8.489e-11 is smaller than 0.05, so we can reject the null hypothesis and accept the alternative hypothesis. Therefore, the mean(income) in non-foreign group is greater than the mean(income) in foreign group.
+
+In my opinion, this are two reasons. First, foreigners could not earn money as much as citizens, so that foreigners could not invest as much as citizens. Second, it was difficult for foreigners to get age-related or hardship-related payments from the government.
+
+In the following box plot we can also see that the result of this test trues in our data set.
+
+```{r, echo=FALSE, message=FALSE}
+# plot for this test
+plot(income ~ foreign) 
+```
+
+
+### Test between `income` and `participation`
+```{r, echo=FALSE, message=FALSE}
+# 2. t.test
+t.test(income ~ participation, alternative = "greater")
+```
+
+The null and alternative hypothesis for this test are as follows:
+
+* $H_{0}$: The mean(income) in the group where people did not participate in the labor force is less than or as same as the mean(income) in the group where people participated in the labor force.
+
+* $H_{1}$: The mean(income) in the group where people did not participate in the labor force is greater than the mean(income) in the group where people participated in the labor force.
+
+The p-value = 5.595e-07 is smaller than 0.05, so we can reject the null hypothesis and accept the alternative hypothesis. Therefore, The mean(income) in the group where people did not participate in the labor force is greater than the mean(income) in the group where people participated in the labor force.
+
+In my opinion, this is because the people who did not participate in the labor force could get more hardship-related payments(e.g., Medicaid & Unemployment) from the government.
+
+In the following box plot we can also see that the result of this test trues in our data set.
+
+
+```{r, echo=FALSE, message=FALSE}
+# plot for the 2. test
+plot(income ~ participation) 
+```
+
+### Test between `income`, `youngkids` and `oldkids`
+
+```{r, echo=FALSE, message=FALSE}
+# 3. t.test(between income and kids)
+youngkids_index <- youngkids >= 1
+oldkids_index <- oldkids >= 1
+
+income_youngkids <- income[youngkids_index]
+income_oldkids <- income[oldkids_index]
+
+t.test(income_youngkids, income_oldkids)
+```
+
+The null and alternative hypothesis for this test are as follows:
+
+* $H_{0}$: There is no significant difference in the means of the two groups. One group had at least one young kid and the other group had at least one old kid.
+
+* $H_{1}$: There is significant difference in the means of these two groups.
+
+The p-value = 0.04887 is smaller than 0.05, so we can reject the null hypothesis and accept the alternative hypothesis. Therefore, there is significant difference in the means of these two groups.
+
+In my opinion, it is more likely that the people who have at least one old kid are older than the people who have at least one young kid. It might affect the age-related payments(Medicare & Social Security) and investment income. The older people could have more work experience, so that they could earn more money and they could invest in something easier.
+
+In the following box plots we can also see that the result of this test trues in our data set.
+
+```{r, echo=FALSE, message=FALSE}
+# plot for the 3. test
+#plot(income_youngkids, income_oldkids)
+
+df_youngkids <- data.frame(income_youngkids) 
+df_oldkids <- data.frame(income_oldkids) 
+
+p <- ggplot(df_youngkids, aes(x=income_youngkids)) +
+  geom_boxplot() +
+  labs(title = "Income of the group with young kids",
+       x = "Income") +
+  coord_cartesian(xlim = c(9,13)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+q <- ggplot(df_oldkids, aes(x=income_oldkids)) +
+  geom_boxplot() +
+  labs(title = "Income of the group with old kids",
+       x = "Income") +
+  coord_cartesian(xlim = c(9,13)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+p / q
+```
+
+
+## 4. Regression Models
+In this section, we are going to use the data set called `PSID1982` and only use the data of 90% of all observations. Here is the description of the variables:
+
+* experience: Years of full-time work experience.
+* weeks: Weeks worked.
+* occupation: factor. Is the individual a white-collar ("white") or blue-collar ("blue") worker?
+* industry: factor. Does the individual work in a manufacturing industry?
+* south: factor. Does the individual reside in the South?
+* smsa: factor. Does the individual reside in a SMSA (standard metropolitan statistical area)?
+* married: factor. Is the individual married?
+* gender: factor indicating gender.
+* union: factor. Is the individual’s wage set by a union contract?
+* education: Years of education.
+* ethnicity: factor indicating ethnicity. Is the individual African-American ("afam") or not ("other")?
+* wage: Wage.
+
+```{r, echo=FALSE, message=FALSE}
+library(AER)
+data("PSID1982")
+
+# 90%-sample
+set.seed(885941)
+n <- nrow(PSID1982)    ## Stichprobenumfang
+
+s <- sample(1:n)      ## zufaellige Permutation aller Personen im Datensatz
+n_90percent <- ceiling(0.9*n)  ## 90% der Daten
+
+PSID1982.90percent <- PSID1982[s,][1:n_90percent,]
+attach(PSID1982.90percent)
+str(PSID1982.90percent)
+```
+
+### Estimate the relationships between a dependent variable(`wage`) and independent variables
+
+1. `wage`and `experience`: Surprisingly, `experience` seems to affect `wage` very slightly.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(experience, wage)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+2. `wage`and `weeks`: `weeks` seems to affect `wage` slightly but more than `experience` affect `wage`.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(weeks, wage)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+3. `occupation`and `wage`: In general, white-collar workers have higher wage.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(occupation, wage)) +
+  geom_boxplot()
+```
+
+4. `industry`and `wage`: There is no significant difference in wage between the individual who works in an manufacturing industry(yes) and the individual who works in other industries.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(industry, wage)) +
+  geom_boxplot()
+```
+
+5. `south`and `wage`: The people who reside in the south tend to have lower wage than others.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(south, wage)) +
+  geom_boxplot()
+```
+
+6. `smsa`and `wage`: The people who reside in a SMSA(standard metropolitan statistical area) tend to have higher wage than others.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(smsa, wage)) +
+  geom_boxplot()
+```
+
+7. `married`and `wage`: In general, the married have higher wage than the unmarried.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(married, wage)) +
+  geom_boxplot()
+```
+
+8. `gender`and `wage`: Males tend to have higher wage than females.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(gender, wage)) +
+  geom_boxplot()
+```
+
+9. `union`and `wage`: There is no significant difference of wage between the individual whose wage is set by a union contract and the individual whose wage is not set by a union contract.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(union, wage)) +
+  geom_boxplot()
+```
+
+10. `education`and `wage`: In general, the longer a individual gets education, the higher wage a individual have.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(education, wage)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+11. `ethnicity`and `wage`: African-Americans("afam") tend to have lower wage than others.
+
+```{r, echo=FALSE, message=FALSE}
+# plot
+ggplot(PSID1982.90percent, aes(ethnicity, wage)) +
+  geom_boxplot()
+```
+
+Based on the information above, I am going to make a model `lm1` with variables: `weeks`, `occupation`, `south`, `smsa`, `married`, `gender`, `education`, `ethnicity`.
+
+```{r, echo=FALSE, message=FALSE}
+lm1 <- lm(wage ~ weeks + occupation + south + smsa + married + gender + education + ethnicity) 
+summary(lm1)
+```
+I am going to make new models `lm2` and `lm3`.
+```{r, echo=FALSE, message=FALSE}
+lm2 <- lm(wage ~ weeks + I(weeks^2) + occupation + south + smsa + married + gender + education + I(education^2) + ethnicity)
+summary(lm2)
+```
+
+```{r, echo=FALSE, message=FALSE}
+lm3 <- lm(wage ~ weeks + I(weeks^2) + I(weeks^3) + occupation + south + smsa + married + gender + education + I(education^2) + I(education^3) + ethnicity)
+summary(lm3)
+```
+
+
+I am going to make a new model `lm.all` which also uses all the other variables in the data set.
+```{r, echo=FALSE, message=FALSE}
+lm.all <- lm( wage ~ . +I(weeks^2) + I(weeks^3) + I(education^2) + I(education^3), data=PSID1982.90percent)
+summary(lm.all)
+```
+Now we are going to use StepAIC function to identify the best subset of predictor variables for this model `lm.all`.
+
+```{r, echo=TRUE, message=FALSE}
+library(MASS)
+lm.step <- stepAIC(lm.all)
+```
+
+```{r, echo=FALSE, message=FALSE}
+summary(lm.step)
+```
+
+
+### In-Sample
+We are going to compare the values of AIC, BIC, RSS and R2 of all models that we created.
+
+```{r, echo=FALSE, message=FALSE}
+AIC <- AIC(lm1, lm2, lm3, lm.all, lm.step)
+BIC <- BIC(lm1, lm2, lm3, lm.all, lm.step)
+RSS <- function(m) deviance(m)
+R2  <- function(m) summary(m)$r.squared
+tabelle <- data.frame(Modell=dimnames(AIC)[[1]], AIC=AIC[,2], BIC=BIC[,2],
+                      RSS=c(RSS(lm1),RSS(lm2),RSS(lm3),RSS(lm.all),RSS(lm.step)),
+                      R2=c(R2(lm1),R2(lm2),R2(lm3),R2(lm.all),R2(lm.step)))
+knitr::kable(tabelle)
+```
+
+In terms of AIC and BIC the model `lm.step` is the best and in terms of RSS and R2 the model `lm.all` is the best. Among `lm1`, `lm2` and `lm3`, `lm1` is the best model in terms of BIC, RSS and R2 and `lm3` is the best model in terms of AIC.
+
+
+#### F-Test
+We are going to perform F-test between `lm.step` and `lm.all` to see if there is a significant difference between these two models.
+
+```{r, echo=FALSE, message=FALSE}
+anova(lm.step, lm.all)
+```
+The p value is much bigger than 0.05, so we cannot reject the null hypothesis. It means that there is no significant difference between these two models.
+
+### Out-of-Sample Validation
+For out-of-sample validation we are going to separate our sample into two samples. one(for training) is 80% and the other one(for test) is 20%.
+
+```{r, echo=FALSE, message=FALSE}
+set.seed(885941)    ## Seed des Zufallszahlengenerators festhalten
+n <- nrow(PSID1982.90percent)    ## Stichprobenumfang
+s <- sample(1:n)      ## zufaellige Permutation aller Personen im Datensatz
+n.train <- ceiling(0.8*n)  ## 80% der Daten
+n.test <- n-n.train  ## - ist minus Zeichen min Nummern
+PSID1982.90percent.train <- PSID1982.90percent[s,][1:n.train,]
+PSID1982.90percent.test  <- PSID1982.90percent[s,][(n.train+1):n,]
+```
+
+Estimate `lm1`, `lm2`, `lm3`, `lm.all`, `lm.step` only using the data for training(80%).
+
+```{r, echo=FALSE, message=FALSE}
+lm1.train <- lm(wage ~ weeks + occupation + south + smsa + married + gender + education + ethnicity, data=PSID1982.90percent.train) 
+lm2.train <- lm(wage ~ weeks + I(weeks^2) + occupation + south + smsa + married + gender + education + I(education^2) + ethnicity, data=PSID1982.90percent.train)
+lm3.train <- lm(wage ~ weeks + I(weeks^2) + I(weeks^3) + occupation + south + smsa + married + gender + education + I(education^2) + I(education^3) + ethnicity, data=PSID1982.90percent.train)
+lm.all.train <- lm( wage ~ . +I(weeks^2) + I(weeks^3) + I(education^2) + I(education^3), data=PSID1982.90percent.train)
+lm.step.train <- stepAIC(lm.all.train)
+```
+Evaluate the values of test MSE using the data for test(20%).
+
+```{r, echo=FALSE, message=FALSE}
+y.test <- PSID1982.90percent.test$wage
+
+y1.hut <- predict(lm1.train, newdata=data.frame(weeks=PSID1982.90percent.test$weeks, occupation=PSID1982.90percent.test$occupation, south=PSID1982.90percent.test$south, smsa=PSID1982.90percent.test$smsa, married=PSID1982.90percent.test$married, gender=PSID1982.90percent.test$gender, education=PSID1982.90percent.test$education, ethnicity=PSID1982.90percent.test$ethnicity))
+
+y2.hut <- predict(lm2.train, newdata=data.frame(weeks=PSID1982.90percent.test$weeks, occupation=PSID1982.90percent.test$occupation, south=PSID1982.90percent.test$south, smsa=PSID1982.90percent.test$smsa, married=PSID1982.90percent.test$married, gender=PSID1982.90percent.test$gender, education=PSID1982.90percent.test$education, ethnicity=PSID1982.90percent.test$ethnicity))
+
+y3.hut <- predict(lm3.train, newdata=data.frame(weeks=PSID1982.90percent.test$weeks, occupation=PSID1982.90percent.test$occupation, south=PSID1982.90percent.test$south, smsa=PSID1982.90percent.test$smsa, married=PSID1982.90percent.test$married, gender=PSID1982.90percent.test$gender, education=PSID1982.90percent.test$education, ethnicity=PSID1982.90percent.test$ethnicity))
+
+y.step.hut <- predict(lm.step.train, newdata=data.frame(weeks=PSID1982.90percent.test$weeks, experience=PSID1982.90percent.test$experience, occupation=PSID1982.90percent.test$occupation, industry=PSID1982.90percent.test$industry, south=PSID1982.90percent.test$south, smsa=PSID1982.90percent.test$smsa, married=PSID1982.90percent.test$married, gender=PSID1982.90percent.test$gender, education=PSID1982.90percent.test$education, ethnicity=PSID1982.90percent.test$ethnicity))
+
+
+MSE1 <- sum( (y.test - y1.hut)^2 )/n.test
+MSE2 <- sum( (y.test - y2.hut)^2 )/n.test
+MSE3 <- sum( (y.test - y3.hut)^2 )/n.test
+MSE.step <- sum( (y.test - y.step.hut)^2 )/n.test
+```
+
+The table comparing the models with respect to AIC, BIC, RSS and MSE is as follows:
+
+```{r, echo=FALSE, message=FALSE}
+AIC <- AIC(lm1.train, lm2.train, lm3.train, lm.step.train)  ## in-sample
+BIC <- BIC(lm1.train, lm2.train, lm3.train, lm.step.train)  ## in-sample
+RSS <- function(m) deviance(m)               ## in-sample
+MSE.test <- c(MSE1, MSE2, MSE3, MSE.step)
+tabelle2 <- data.frame(Modell=dimnames(AIC)[[1]], AIC.train=AIC[,2], BIC.train=BIC[,2], 
+                       RSS.train=c(RSS(lm1.train),RSS(lm2.train),RSS(lm3.train),RSS(lm.step.train)),
+                       MSE.train=c(RSS(lm1.train),RSS(lm2.train),RSS(lm3.train),RSS(lm.step.train))/n.train, 
+                       
+MSE.test=MSE.test)
+knitr::kable(tabelle2)
+```
+
+In terms of test MSE, the model `lm3` is the best.
+
+### Discussion
+When I chose the independent variables for the model `lm1`, I did not include the variable `experience`, because it seemed like that the variable `experience`do not affect the dependent variable `wage`. But it was interesting that the variable `experience` was included with a very small p value, when I use stepAIC function to the model which has all the variables in the data set(PSID1982). In terms of the test MSE, the model `lm3` looks the best model now, but it would be much better to evaluate the test MSE also with other test samples.
